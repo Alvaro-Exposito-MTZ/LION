@@ -1,20 +1,46 @@
-# Import CT utils
-from LION.CTtools.ct_utils import make_operator
+from __future__ import annotations
+
 from abc import ABC, ABCMeta, abstractmethod
+
 import torch
+
+# Import CT utils
+from LION.CTtools.ct_geometry import Geometry
+from LION.CTtools.ct_utils import make_operator
+from LION.models.LIONmodel import to_autograd
+from LION.operators import Operator
 
 # Base class for a Reconstructor in the LION framework.
 # This assumes a trained model
 
 
 class LIONReconstructor(ABC):
-    def __init__(self, geometry):
+    def __init__(self, operator: Geometry | Operator):
+        """
+        Base class for a Reconstructor in the LION framework.
+        This assumes a trained model.
+
+        Parameters
+        ----------
+        operator : Geometry or Operator
+            The forward operator representing the imaging system.
+            If a Geometry is provided, the corresponding CT operator will be created.
+        """
         __metaclass__ = ABCMeta
 
-        self.geometry = geometry
-        self.op = make_operator(self.geometry)
+        if isinstance(operator, Operator):
+            self.geometry = None
+            self.op = operator
+        elif isinstance(operator, Geometry):
+            self.geometry = operator
+            self.op = make_operator(self.geometry)
+        else:
+            raise ValueError(
+                "Input operator is neither of class LION.operators.operator.Operator nor LION.CTtools.ct_geometry.Geometry"
+            )
+        self.op_autograd = to_autograd(self.op)
 
-    def reconstruct(self, sino, **kwargs):
+    def reconstruct(self, sino: torch.Tensor, **kwargs):
         """
         Reconstruct the sinogram using the model and geometry.
 
@@ -25,9 +51,9 @@ class LIONReconstructor(ABC):
         if sino.dim() == 4:
             recons = torch.zeros(
                 sino.size(0),
-                *self.op.domain.shape,
+                *self.op.domain_shape,
                 dtype=sino.dtype,
-                device=sino.device
+                device=sino.device,
             )
             for i, s in enumerate(sino):
                 recons[i] = self.reconstruct_sample(s, **kwargs)
@@ -36,5 +62,5 @@ class LIONReconstructor(ABC):
         return self.reconstruct_sample(sino, **kwargs)
 
     @abstractmethod
-    def reconstruct_sample(self, sino, **kwargs):
+    def reconstruct_sample(self, sino: torch.Tensor, **kwargs):
         pass
