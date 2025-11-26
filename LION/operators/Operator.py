@@ -19,9 +19,9 @@ class Operator:
 
     def __call__(
         self,
-        x: torch.Tensor | np.ndarray | ts.Data,
-        out: torch.Tensor | np.ndarray | ts.Data | None = None,
-    ) -> torch.Tensor | np.ndarray | ts.Data:
+        x: torch.Tensor | np.ndarray | ts.Data.Data,
+        out: torch.Tensor | np.ndarray | ts.Data.Data | None = None,
+    ) -> torch.Tensor | np.ndarray | ts.Data.Data:
         """
         Apply the forward operation of the operator.
 
@@ -41,9 +41,9 @@ class Operator:
 
     def forward(
         self,
-        x: torch.Tensor | np.ndarray | ts.Data,
-        out: torch.Tensor | np.ndarray | ts.Data | None = None,
-    ) -> torch.Tensor | np.ndarray | ts.Data:
+        x: torch.Tensor | np.ndarray | ts.Data.Data,
+        out: torch.Tensor | np.ndarray | ts.Data.Data | None = None,
+    ) -> torch.Tensor | np.ndarray | ts.Data.Data:
         """
         Apply the forward operation of Operator.
 
@@ -55,9 +55,9 @@ class Operator:
 
     def adjoint(
         self,
-        y: torch.Tensor | np.ndarray | ts.Data,
-        out: torch.Tensor | np.ndarray | ts.Data | None = None,
-    ) -> torch.Tensor | np.ndarray | ts.Data:
+        y: torch.Tensor | np.ndarray | ts.Data.Data,
+        out: torch.Tensor | np.ndarray | ts.Data.Data | None = None,
+    ) -> torch.Tensor | np.ndarray | ts.Data.Data:
         """
         Apply the adjoint (backward) operation of the operator.
 

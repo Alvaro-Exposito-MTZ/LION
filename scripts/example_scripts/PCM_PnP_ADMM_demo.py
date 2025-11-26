@@ -143,7 +143,8 @@ def run_demo(
             )
 
     admm_iterations = 100
-    admm_step_size = 1e5
+    # admm_step_size = 1e5
+    admm_step_size = N * N
     cg_max_iter = 100
     cg_tol = 1e-7
 

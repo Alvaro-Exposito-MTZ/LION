@@ -30,11 +30,11 @@ dependencies = [
     # tomosipo supports numpy 2.x starting from 0.7.0 (not available on conda yet)
     "tomosipo @ git+https://github.com/ahendriksen/tomosipo.git@v0.7.0",  # will include pytorch 2.4.1? But the actual torch installed is the latest 2.9.0
     # Note: in tomosipo's setup.py, the requirements are 'astra-toolbox>=2.0,!=2.3.0', 'numpy>=1.21'
-    
+
     "ts_algorithms @ git+https://github.com/ahendriksen/ts_algorithms.git",  # release v0.1.0 is missing `nag_ls` so we install the latest version directly from main branch.
     # Note: ts_algorithms doesn't specify any requirements in its setup.py so we need to make sure the dependencies are installed ourselves.
     # The main dependency is tomosipo which in turns depends on astra-toolbox.
-    
+
     # The followings are currently set to prefer newer versions (make sure they don't conflict with the ones above)
     "deepinv",  # pretrained DRUNet
     "h5py",
@@ -48,6 +48,9 @@ dependencies = [
     "pillow",
     "pydicom",
     "pylidc",
+    "ptwt",  # Wavelet transforms for PyTorch, for photocurrent mapping reconstruction baseline
+    "pywt",  # Wavelet transforms for Numpy
+    "pytorch-wavelets",  # Wavelet transforms for PyTorch (TODO: switch to ptwt)
     "scikit-image",
     "scipy",
     "spyrit",  # Fast Walsh-Hadamard Transform
@@ -99,6 +102,8 @@ filterwarnings = [
     "error",
     "ignore:Anomaly Detection has been enabled:UserWarning",                   # torch.autograd
     "ignore:.*In the future, this object will be coerced as if it was first converted using.*:FutureWarning", # numpy 1.2
+    "ignore:pkg_resources is deprecated as an API:UserWarning",  # ignore warning when importing pytorch_wavelets (if not tests will fail)
+    "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",  # ignore warning when importing pytorch_wavelets (if not tests will fail)
 ]
 addopts = "-n auto --dist loadfile --maxprocesses=8"
 markers = ["cuda : Tests only to be run when cuda device is available"]
@@ -168,6 +173,12 @@ ignore = [
     "COM812", #  missing-trailing-comma (conflict with formatter)
     "SIM108", #  if-else-block-instead-of-if-exp
     "A005",   #  stdlib-module-shadowing
+    "D205",   #  blank-line-before-class-docstring
+    "D400",   #  first-line-summary-ending-with-period
+    "D401",   #  first-line-should-be-in-imperative-mood
+    "N802",   #  function name should be lowercase
+    "N803",   #  argument name should be lowercase
+    "N806",   #  variable in function should be lowercase
 ]
 
 [tool.ruff.lint.isort]
@@ -176,13 +187,14 @@ split-on-trailing-comma = false
 
 [tool.ruff.lint.flake8-quotes]
 docstring-quotes = "double"
-inline-quotes = "single"
+inline-quotes = "double"
+multiline-quotes = "double"
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
 [tool.ruff.format]
-quote-style = "single"
+quote-style = "double"
 skip-magic-trailing-comma = false
 
 [tool.typos.default]
