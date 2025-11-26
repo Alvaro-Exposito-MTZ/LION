@@ -9,6 +9,7 @@ import torch
 from tqdm import tqdm
 
 from LION.operators import Operator, PhotocurrentMapOp
+from LION.utils.math import power_method_torch
 
 
 class CompositeOp(Operator):
@@ -92,60 +93,24 @@ class CompositeOp(Operator):
         g = self.wavelet.forward(x_back)
         return g
 
+    @property
+    def domain_shape(self):
+        # Opposite of range_shape of wavelet since wavelet is Psi^{-1}
+        return self.wavelet.range_shape
+
+    @property
+    def range_shape(self):
+        # Opposite of domain_shape of wavelet since wavelet is Psi^{-1}
+        return self.wavelet.domain_shape
+
 
 def soft_threshold(v: torch.Tensor, tau: float) -> torch.Tensor:
     """Soft thresholding operator."""
     return torch.sign(v) * torch.clamp(torch.abs(v) - tau, min=0.0)
 
 
-def estimate_lipschitz(
-    A,
-    AT,
-    size: int,
-    n_power_iter: int = 20,
-    device: str | torch.device | None = None,
-) -> float:
-    """Estimate spectral norm of A^T A by power iteration.
-
-    Parameters
-    ----------
-    A, AT : callables
-        Forward and adjoint operators.
-    size : int
-        Dimension of the domain of A.
-    n_power_iter : int
-        Number of power iterations.
-    device : str or torch.device, optional
-        Device for the power iteration.
-
-    Returns
-    -------
-    L : float
-        Approximate Lipschitz constant of grad f = A^T A w.
-    """
-    if device is None:
-        device = torch.device("cpu")
-    else:
-        device = torch.device(device)
-
-    v = torch.randn(size, dtype=torch.float32, device=device)
-    v = v / (torch.norm(v) + 1e-12)
-
-    norm_AtAv = 0.0
-    for _ in range(n_power_iter):
-        Av = A(v)
-        AtAv = AT(Av)
-        norm_AtAv = torch.norm(AtAv).item()
-        if norm_AtAv == 0.0:
-            break
-        v = AtAv / (norm_AtAv + 1e-12)
-
-    return norm_AtAv
-
-
 def fista_l1(
-    A,
-    AT,
+    op: Operator,
     y: torch.Tensor,
     lam: float,
     max_iter: int = 200,
@@ -158,8 +123,6 @@ def fista_l1(
 
     Parameters
     ----------
-    A, AT : callables
-        Forward and adjoint operators.
     y : torch.Tensor
         Measurements, shape (M,).
     lam : float
@@ -182,11 +145,11 @@ def fista_l1(
     device = y.device
 
     # Dimension inferred from one adjoint call
-    w0: torch.Tensor = AT(torch.zeros_like(y))
+    w0: torch.Tensor = op.adjoint(torch.zeros_like(y))
     n: int = w0.numel()
 
     if L is None:
-        L = estimate_lipschitz(A, AT, n, device=device)
+        L = power_method_torch(op, device=device)
     step = 1.0 / (L + 1e-12)
 
     w = torch.zeros(n, dtype=torch.float32, device=device)
@@ -197,8 +160,8 @@ def fista_l1(
     if progress_bar:
         iterator = tqdm(iterator, desc="FISTA l1")
     for k in iterator:
-        Az = A(z)
-        grad = AT(Az - y)  # gradient of data term, shape (n,)
+        Az = op(z)
+        grad = op.adjoint(Az - y)  # gradient of data term, shape (n,)
 
         w_next = soft_threshold(z - step * grad, lam * step)
         t_next = 0.5 * (1.0 + math.sqrt(1.0 + 4.0 * t * t))
@@ -209,7 +172,7 @@ def fista_l1(
         t = t_next
 
         if verbose:
-            data_term = 0.5 * torch.norm(A(w) - y).pow(2).item()
+            data_term = 0.5 * torch.norm((op(w)) - y).pow(2).item()
             l1_term = lam * torch.norm(w, p=1).item()
             print(
                 f"Iter {k:4d}  f = {data_term + l1_term:.4e}  "
@@ -223,9 +186,64 @@ def fista_l1(
     return w
 
 
+class DebiasOp(Operator):
+    """Debiasing least squares operator on the support of w.
+
+    Parameters
+    ----------
+    operator : Operator
+        Forward operator A.
+    y : torch.Tensor
+        Measurements, shape (M,).
+    w : torch.Tensor
+        l1 minimiser, shape (Nw,).
+    support_tol : float
+        Threshold defining nonzero support.
+    """
+
+    def __init__(
+        self,
+        op: Operator,
+        y: torch.Tensor,
+        w: torch.Tensor,
+        support_tol: float = 1e-3,
+    ):
+        self.op = op
+        self.y = y
+        self.w = w
+        self.support_tol = support_tol
+
+        self.support = torch.nonzero(
+            torch.abs(w) > support_tol, as_tuple=False
+        ).squeeze(1)
+        self.device = op.device
+
+    def __call__(self, v: torch.Tensor, out=None) -> torch.Tensor:
+        """Apply the forward projection on the support."""
+        return self.forward(v, out=out)
+
+    def forward(self, v: torch.Tensor, out=None) -> torch.Tensor:
+        """Apply A_s on the support."""
+        w_full = torch.zeros_like(self.w)
+        w_full[self.support] = v
+        return self.op.forward(w_full, out=out)
+
+    def adjoint(self, r: torch.Tensor, out=None) -> torch.Tensor:
+        """Apply A_s^T on the support."""
+        g_full = self.op.adjoint(r, out=out)
+        return g_full[self.support]
+
+    @property
+    def domain_shape(self):
+        return (self.support.numel(),)
+
+    @property
+    def range_shape(self):
+        return self.op.range_shape
+
+
 def debias_ls(
-    A,
-    AT,
+    op: Operator,
     y: torch.Tensor,
     w: torch.Tensor,
     support_tol: float = 1e-3,
@@ -237,8 +255,6 @@ def debias_ls(
 
     Parameters
     ----------
-    A, AT : callables
-        Forward and adjoint operators for the full coefficient vector.
     y : torch.Tensor
         Measurements, shape (M,).
     w : torch.Tensor
@@ -261,18 +277,9 @@ def debias_ls(
     if support.numel() == 0:
         return w.clone()
 
-    m = support.numel()
+    op_s = DebiasOp(op, y, w, support_tol=support_tol)
 
-    def A_s(v_local: torch.Tensor) -> torch.Tensor:
-        w_full = torch.zeros_like(w)
-        w_full[support] = v_local
-        return A(w_full)
-
-    def AT_s(r_local: torch.Tensor) -> torch.Tensor:
-        g_full = AT(r_local)
-        return g_full[support]
-
-    L = estimate_lipschitz(A_s, AT_s, m, device=device)
+    L = power_method_torch(op_s, device=device)
     step = 1.0 / (L + 1e-12)
 
     v = w[support].clone()
@@ -281,15 +288,15 @@ def debias_ls(
     if progress_bar:
         iterator = tqdm(iterator, desc="Debiasing LS")
     for _ in iterator:
-        r = A_s(v) - y
-        grad = AT_s(r)
+        r = op_s(v) - y
+        grad = op_s.adjoint(r)
         v_next = v - step * grad
 
         rel_change = torch.norm(v_next - v) / (torch.norm(v) + 1e-8)
         v = v_next
 
         if verbose:
-            data_term = 0.5 * torch.norm(A_s(v) - y).pow(2).item()
+            data_term = 0.5 * torch.norm(op_s(v) - y).pow(2).item()
             print(
                 f"Debiasing LS  f = {data_term:.4e}  "
                 f"rel_change = {rel_change.item():.2e}  tol = {tol:.2e}  "

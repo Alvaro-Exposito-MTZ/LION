@@ -53,6 +53,7 @@ class Subsampler:
 
 class PhotocurrentMapOp(Operator):
     def __init__(self, J: int, subsampler: Subsampler, wht_dim: int = -1, device=None):
+        super().__init__(device=device)
         self.N = 1 << J
         self.num_pixels = self.N * self.N
         self.wht_dim = wht_dim

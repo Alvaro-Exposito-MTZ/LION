@@ -49,10 +49,11 @@ dependencies = [
     "pydicom",
     "pylidc",
     "ptwt",  # Wavelet transforms for PyTorch, for photocurrent mapping reconstruction baseline
-    "pywt",  # Wavelet transforms for Numpy
+    "PyWavelets",  # Wavelet transforms for Numpy
     "pytorch-wavelets",  # Wavelet transforms for PyTorch (TODO: switch to ptwt)
     "scikit-image",
     "scipy",
+    "spgl1",  # SPGL1 solver, for baseline photocurrent mapping reconstruction method
     "spyrit",  # Fast Walsh-Hadamard Transform
     "tifffile",
     "torch",

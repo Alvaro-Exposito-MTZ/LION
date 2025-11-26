@@ -17,6 +17,10 @@ class Operator:
     This class should be subclassed to implement specific operators.
     """
 
+    def __init__(self, device: torch.device | str | None = None):
+        """Initialize the Operator."""
+        self.device = device
+
     def __call__(
         self,
         x: torch.Tensor | np.ndarray | ts.Data.Data,

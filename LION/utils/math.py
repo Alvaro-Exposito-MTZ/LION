@@ -1,8 +1,14 @@
+"""Utility math functions."""
+
+from __future__ import annotations
+
 import numpy as np
 import torch
 
+from LION.operators import Operator
 
-def power_method(op, maxiter=100, tol=1e-6):
+
+def power_method(op: Operator, maxiter: int = 100, tol: float = 1e-6):
     arr_old = np.random.rand(*op.domain_shape).astype(np.float32)
     error = tol + 1
     i = 0
@@ -12,7 +18,7 @@ def power_method(op, maxiter=100, tol=1e-6):
         omega = op(arr_old)
         alpha = np.linalg.norm(omega)
         u = (1.0 / alpha) * omega
-        z = op.T(u)
+        z = op.adjoint(u)
         beta = np.linalg.norm(z)
         arr = (1.0 / beta) * z
         error = np.linalg.norm(op(arr) - beta * u)
@@ -23,6 +29,40 @@ def power_method(op, maxiter=100, tol=1e-6):
             return sigma
 
     return sigma
+
+
+def power_method_torch(
+    op: Operator,
+    maxiter: int = 20,
+    device: str | torch.device | None = None,
+) -> float:
+    """Estimate operator norm by power iteration.
+
+    Parameters
+    ----------
+    maxiter : int
+        Number of power iterations.
+    device : str or torch.device, optional
+        Device for the power iteration.
+
+    Returns
+    -------
+    L : float
+        Approximate Lipschitz constant of grad f = A^T A w.
+    """
+    v = torch.randn(op.domain_shape, dtype=torch.float32, device=device)
+    v = v / (torch.norm(v) + 1e-12)
+
+    norm_AtAv = 0.0
+    for _ in range(maxiter):
+        Av = op(v)
+        AtAv = op.adjoint(Av)
+        norm_AtAv = torch.norm(AtAv).item()
+        if norm_AtAv == 0.0:
+            break
+        v = AtAv / (norm_AtAv + 1e-12)
+
+    return norm_AtAv
 
 
 def test_convexity(net, x, device):

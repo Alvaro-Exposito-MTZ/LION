@@ -21,6 +21,10 @@
 #
 
 # %%
+from __future__ import annotations
+
+from typing import Literal
+
 import matplotlib.pyplot as plt
 import torch
 from skimage.metrics import peak_signal_noise_ratio as psnr
@@ -31,17 +35,23 @@ from LION.classical_algorithms.compressed_sensing import (
     debias_ls,
     fista_l1,
 )
+from LION.classical_algorithms.spgl1 import spgl1_l1
 from LION.operators import PhotocurrentMapOp, Subsampler, Wavelet2D_DB4
 
 
 def run_demo(
     dataset: torch.utils.data.Dataset,
+    algo: Literal["fista", "spgl1"] = "fista",  # "fista" or "spgl1"
     subtract_from_J: int = 1,
     delta_divided_by: int = 4,
-    fista_lambda: float = 1e-3,  # needs tuning depending on noise level
-    fista_max_iter: int = 300,
+    lam: float = 1e-3,
+    max_iter: int = 300,
+    tol: float = 1e-4,
     debias_max_iter: int = 200,
+    debias_support_tol: float = 1e-3,
+    debias_tol: float = 1e-5,
     verbose: bool = False,
+    clim: tuple | None = None,
 ):
     device = torch.get_default_device()
     print(f"Using device: {device}")
@@ -73,35 +83,49 @@ def run_demo(
     A_op = CompositeOp(wavelet, phi, device=device)
 
     # Measurements y (replace with real photocurrent data)
-    y = phi.forward(im_tensor)
+    y = phi(im_tensor)
 
     # l1 reconstruction in wavelet domain
-    print(
-        "Running FISTA reconstruction: "
-        f"{fista_max_iter} iterations, lambda={fista_lambda}..."
-    )
-    w_hat = fista_l1(
-        A=A_op.forward,
-        AT=A_op.adjoint,
-        y=y,
-        lam=fista_lambda,
-        max_iter=fista_max_iter,
-        tol=1e-4,
-        L=None,
-        verbose=verbose,
-        progress_bar=True,
-    )
+    if algo == "fista":
+        print(
+            "Running FISTA reconstruction: " f"{max_iter} iterations, lambda={lam}..."
+        )
+        w_hat = fista_l1(
+            op=A_op,
+            y=y,
+            lam=lam,
+            max_iter=max_iter,
+            tol=tol,
+            L=None,
+            verbose=verbose,
+            progress_bar=True,
+        )
+    elif algo == "spgl1":
+        print(
+            "Running SPGL1 reconstruction: " f"{max_iter} iterations, lambda={lam}..."
+        )
+        # (LASSO interpretation: lam -> tau)
+        w_hat = spgl1_l1(
+            op=A_op,
+            y=y,
+            lam=lam,  # l1 budget
+            max_iter=max_iter,
+            mode="lasso",  # or "bpdn" if lam should be a noise bound
+            verbose=verbose,
+            spgl1_kwargs={"opt_tol": tol},
+        )
+    else:
+        raise ValueError(f"Unknown algo '{algo}', expected 'fista' or 'spgl1'.")
 
     # Optional debiasing
     print(f"Running debiasing: {debias_max_iter} iterations...")
     w_debias = debias_ls(
-        A=A_op.forward,
-        AT=A_op.adjoint,
+        op=A_op,
         y=y,
         w=w_hat,
-        support_tol=1e-3,
+        support_tol=debias_support_tol,
         max_iter=debias_max_iter,
-        tol=1e-5,
+        tol=debias_tol,
         progress_bar=True,
     )
 
@@ -125,8 +149,6 @@ def run_demo(
     ssim_cs = ssim(im_np, cs_result_np, data_range=data_range)
 
     # %%
-    # clim = None
-    clim = [0, 1]
     n_subplots = 4
     plt.figure(figsize=(n_subplots * 4, 4))
 

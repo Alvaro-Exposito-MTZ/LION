@@ -10,7 +10,8 @@ from LION.operators.Operator import Operator
 
 
 class TomographicProjOp(Operator):
-    def __init__(self, ts_operator: ts.Operator.Operator):
+    def __init__(self, ts_operator: ts.Operator.Operator, device=None):
+        super().__init__(device=device)
         self._ts = ts_operator
 
     def __call__(
