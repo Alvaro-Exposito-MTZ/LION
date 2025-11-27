@@ -143,7 +143,9 @@ class Operator:
         -------
             Shape of the image domain.
         """
-        raise NotImplementedError("property must be implemented by subclasses.")
+        raise NotImplementedError(
+            "property `domain_shape` must be implemented by subclasses."
+        )
 
     @property
     def range_shape(self):
@@ -154,4 +156,6 @@ class Operator:
         -------
             Shape of the data (measurement) domain.
         """
-        raise NotImplementedError("property must be implemented by subclasses.")
+        raise NotImplementedError(
+            "property `range_shape` must be implemented by subclasses."
+        )

@@ -5,6 +5,7 @@ import torch
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
 from LION.operators import (
+    Operator,
     PhotocurrentMapOp,
     PhotocurrentMapOpNumpy,
     Subsampler,
@@ -14,6 +15,92 @@ from LION.operators import (
     Wavelet2DNumpy,
 )
 from LION.utils.math import power_method_numpy, power_method_torch
+
+
+def test_matrix_op_operator_norm_torch():
+    """Test operator norm computation on a small matrix."""
+    # Example matrix
+    rng = torch.Generator().manual_seed(0)
+    A = torch.rand((5, 3), dtype=torch.float32, generator=rng)
+
+    # Singular values (Sigma in SVD A = U Σ V^T)
+    singular_values = torch.linalg.svdvals(A)
+
+    # Operator 2-norm (largest singular value)
+    op_2_norm: torch.Tensor = torch.linalg.norm(A, 2)
+    # # or equivalently:
+    op_norm_expected: torch.Tensor = singular_values[0]
+
+    torch.testing.assert_close(op_2_norm, op_norm_expected, atol=1e-6, rtol=1e-6)
+
+    class MatrixOperatorTorch(Operator):
+        def __init__(self, matrix: torch.Tensor):
+            self.matrix = matrix
+
+        def __call__(self, x: torch.Tensor, out=None) -> torch.Tensor:
+            return self.forward(x)
+
+        def forward(self, x: torch.Tensor, out=None) -> torch.Tensor:
+            return self.matrix @ x
+
+        def adjoint(self, y: torch.Tensor, out=None) -> torch.Tensor:
+            return self.matrix.T @ y
+
+        @property
+        def domain_shape(self):
+            return (self.matrix.shape[1],)
+
+        @property
+        def range_shape(self):
+            return (self.matrix.shape[0],)
+
+    matrix_op = MatrixOperatorTorch(A)
+    op_norm_computed = power_method_torch(matrix_op)
+    torch.testing.assert_close(op_norm_computed, op_norm_expected, atol=1e-6, rtol=1e-6)
+
+
+def test_matrix_op_operator_norm_numpy():
+    """Test operator norm computation on a small matrix for Numpy arrays."""
+    # Example matrix
+    rng = np.random.default_rng(seed=0)
+    A = rng.random((5, 3)).astype(np.float32)
+
+    # Singular values (Sigma in SVD A = U Σ V^T)
+    singular_values = np.linalg.svd(A, compute_uv=False)
+
+    # Operator 2-norm (largest singular value)
+    op_2_norm = np.linalg.norm(A, 2)
+    # # or equivalently:
+    op_norm_expected = singular_values[0]
+
+    np.testing.assert_allclose(op_2_norm, op_norm_expected, atol=1e-6, rtol=1e-6)
+
+    class MatrixOperator(Operator):
+        def __init__(self, matrix: np.ndarray):
+            self.matrix = matrix
+
+        def __call__(self, x: np.ndarray, out=None) -> np.ndarray:
+            return self.forward(x)
+
+        def forward(self, x: np.ndarray, out=None) -> np.ndarray:
+            return self.matrix @ x
+
+        def adjoint(self, y: np.ndarray, out=None) -> np.ndarray:
+            return self.matrix.T @ y
+
+        @property
+        def domain_shape(self):
+            return (self.matrix.shape[1],)
+
+        @property
+        def range_shape(self):
+            return (self.matrix.shape[0],)
+
+    matrix_op = MatrixOperator(A)
+    op_norm_computed = power_method_numpy(matrix_op)
+    np.testing.assert_allclose(
+        op_norm_computed.item(), op_norm_expected, atol=1e-6, rtol=1e-6
+    )
 
 
 def test_ct_operator_norm_torch():
@@ -80,12 +167,12 @@ def test_wht_operator_norm_torch():
     """Test with Walsh-Hadamard Transform operator."""
 
     J = 4
-    H = W = 1 << J  # 16x16 image
-    wht_op = WalshHadamardTransform2D(height=H, width=W)
+    N = 1 << J  # 16x16 image
+    wht_op = WalshHadamardTransform2D(height=N, width=N)
 
     wht_op_norm = power_method_torch(wht_op)
     rng = torch.Generator().manual_seed(0)
-    x = torch.rand((H, W), dtype=torch.float32, generator=rng)
+    x = torch.rand((N, N), dtype=torch.float32, generator=rng)
     y = wht_op(x)
     ratio = torch.norm(y) / torch.norm(x)
     # Since our operator is not normalized,  ||WHT x|| / ||x|| = ||WHT||.
@@ -102,12 +189,12 @@ def test_wht_operator_norm_numpy():
     """Test with Walsh-Hadamard Transform operator for NumPy arrays."""
 
     J = 4
-    H = W = 1 << J  # 16x16 image
-    wht_op = WalshHadamardTransform2DNumpy(height=H, width=W)
+    N = 1 << J  # 16x16 image
+    wht_op = WalshHadamardTransform2DNumpy(height=N, width=N)
 
     wht_op_norm = power_method_numpy(wht_op)
     rng = np.random.default_rng(seed=0)
-    x = rng.random((H, W)).astype(np.float32)
+    x = rng.random((N, N)).astype(np.float32)
     y = wht_op(x)
     ratio = np.linalg.norm(y) / np.linalg.norm(x)
     # Since our operator is not normalized,  ||WHT x|| / ||x|| = ||WHT||.
