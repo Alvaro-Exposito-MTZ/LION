@@ -1,6 +1,5 @@
 import torch
-from LION.classical_algorithms.compressed_sensing import CompositeOp
-from LION.operators import PhotocurrentMapOp, Subsampler, Wavelet2D
+from LION.operators import CompositeOp, PhotocurrentMapOp, Subsampler, Wavelet2D
 from tests.helper import dotproduct_adjointness_test
 
 

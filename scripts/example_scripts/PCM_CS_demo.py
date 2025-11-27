@@ -30,14 +30,10 @@ import torch
 from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
 
-from LION.classical_algorithms.compressed_sensing import (
-    CompositeOp,
-    debias_ls,
-    fista_l1,
-)
+from LION.classical_algorithms import fista_l1
 from LION.classical_algorithms.spgl1 import spgl1_torch
-from LION.operators import PhotocurrentMapOp, Subsampler
-from LION.operators.Wavelet2D import Wavelet2D
+from LION.operators import CompositeOp, PhotocurrentMapOp, Subsampler, Wavelet2D
+from LION.operators.DebiasOp import debias_ls
 
 
 def run_demo(
@@ -101,15 +97,16 @@ def run_demo(
         print(
             "Running SPGL1 reconstruction: " f"{max_iter} iterations, lambda={lam}..."
         )
+        verbosity = 2 if verbose else 0
         # (LASSO interpretation: lam -> tau)
         w_hat = spgl1_torch(
             op=A_op,
             y=y,
             lam=lam,  # l1 budget
-            max_iter=max_iter,
+            iter_lim=max_iter,
             mode="lasso",  # or "bpdn" if lam should be a noise bound
-            verbose=verbose,
-            spgl1_kwargs={"opt_tol": tol},
+            verbosity=verbosity,
+            opt_tol=tol,
         )
     else:
         raise ValueError(f"Unknown algo '{algo}', expected 'fista' or 'spgl1'.")

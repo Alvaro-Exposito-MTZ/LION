@@ -1,5 +1,7 @@
 """LION operators."""
 
+from LION.operators.CompositeOp import CompositeOp
+from LION.operators.DebiasOp import DebiasOp
 from LION.operators.Operator import Operator
 from LION.operators.PhotocurrentMapOp import (
     PhotocurrentMapOp,
@@ -14,6 +16,8 @@ from LION.operators.WalshHadamardTransform2D import (
 from LION.operators.Wavelet2D import Wavelet2D, Wavelet2DNumpy
 
 __all__ = [
+    "CompositeOp",
+    "DebiasOp",
     "Operator",
     "PhotocurrentMapOp",
     "PhotocurrentMapOpNumpy",
