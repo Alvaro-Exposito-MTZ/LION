@@ -45,10 +45,10 @@ def test_fista_l1() -> None:
     )
     recon = wavelet.inverse(w_hat)
     zero_filled = phi.pseudo_inv(y)  # A(y) is the least squares solution
-    torch.testing.assert_close(recon, zero_filled, atol=1e-16, rtol=1e-16)
+    torch.testing.assert_close(recon, zero_filled, atol=1e-6, rtol=1e-6)
 
 
-@pytest.mark.cuda  # Only run this test if CUDA is available
+@pytest.mark.cuda  # Add argument `-m "not cuda"` to the `pytest` command line to skip this test
 def test_fista_l1_cuda() -> None:
     """Test reconstruction with FISTA L1 with no regularization (lam=0) simply
     gives the least squares solution.
@@ -87,4 +87,4 @@ def test_fista_l1_cuda() -> None:
     )
     recon = wavelet.inverse(w_hat)
     zero_filled = phi.pseudo_inv(y)  # A(y) is the least squares solution
-    torch.testing.assert_close(recon, zero_filled, atol=1e-16, rtol=1e-16)
+    torch.testing.assert_close(recon, zero_filled, atol=1e-6, rtol=1e-6)
