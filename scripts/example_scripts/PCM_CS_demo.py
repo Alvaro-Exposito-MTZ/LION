@@ -35,7 +35,7 @@ from LION.classical_algorithms.compressed_sensing import (
     debias_ls,
     fista_l1,
 )
-from LION.classical_algorithms.spgl1 import spgl1_l1
+from LION.classical_algorithms.spgl1 import spgl1_torch
 from LION.operators import PhotocurrentMapOp, Subsampler
 from LION.operators.Wavelet2D import Wavelet2D
 
@@ -102,7 +102,7 @@ def run_demo(
             "Running SPGL1 reconstruction: " f"{max_iter} iterations, lambda={lam}..."
         )
         # (LASSO interpretation: lam -> tau)
-        w_hat = spgl1_l1(
+        w_hat = spgl1_torch(
             op=A_op,
             y=y,
             lam=lam,  # l1 budget
