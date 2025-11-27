@@ -8,7 +8,53 @@ import torch
 from LION.operators import Operator
 
 
-def power_method(op: Operator, maxiter: int = 100, tol: float = 1e-6):
+def power_method(
+    op: Operator, maxiter: int = 100, tol: float = 1e-6, uses_torch: bool = True
+) -> float:
+    """Estimate operator norm by power iteration.
+
+    This is a wrapper function to choose between numpy and torch implementations.
+
+    Parameters
+    ----------
+    op : Operator
+        The operator for which to estimate the norm.
+    maxiter : int
+        Number of power iterations.
+    tol : float
+        Absolute tolerance for convergence. (TODO: consider adding relative tolerance?)
+    uses_torch : bool
+        Whether to use the torch implementation. We use torch by default.
+
+    Returns
+    -------
+    sigma : float
+        Estimated operator norm.
+    """
+    if uses_torch:
+        return power_method_torch(op, maxiter=maxiter).item()
+    return power_method_numpy(op, maxiter=maxiter, tol=tol).item()
+
+
+def power_method_numpy(
+    op: Operator, maxiter: int = 100, tol: float = 1e-6
+) -> np.ndarray:
+    """Estimate operator norm by power iteration using numpy.
+
+    Parameters
+    ----------
+    op : Operator
+        The operator for which to estimate the norm.
+    maxiter : int
+        Number of power iterations.
+    tol : float
+        Absolute tolerance for convergence. (TODO: consider adding relative tolerance?)
+
+    Returns
+    -------
+    sigma : np.ndarray
+        Estimated operator norm.
+    """
     arr_old = np.random.rand(*op.domain_shape).astype(np.float32)
     error = tol + 1
     i = 0
@@ -33,36 +79,46 @@ def power_method(op: Operator, maxiter: int = 100, tol: float = 1e-6):
 
 def power_method_torch(
     op: Operator,
-    maxiter: int = 20,
-    device: str | torch.device | None = None,
-) -> float:
-    """Estimate operator norm by power iteration.
+    maxiter: int = 100,
+    tol: float = 1e-6,
+    device: torch.device | str | None = None,
+) -> torch.Tensor:
+    """Estimate operator norm by power iteration using torch.
 
     Parameters
     ----------
+    op : Operator
+        The operator for which to estimate the norm.
     maxiter : int
         Number of power iterations.
-    device : str or torch.device, optional
-        Device for the power iteration.
+    tol : float
+        Absolute tolerance for convergence. (TODO: consider adding relative tolerance?)
 
     Returns
     -------
-    L : float
-        Approximate Lipschitz constant of grad f = A^T A w.
+    sigma : torch.Tensor
+        Estimated operator norm.
     """
-    v = torch.randn(op.domain_shape, dtype=torch.float32, device=device)
-    v = v / (torch.norm(v) + 1e-12)
+    arr_old = torch.randn(*op.domain_shape, device=device)
+    error = tol + 1
+    i = 0
+    while error >= tol:
 
-    norm_AtAv = 0.0
-    for _ in range(maxiter):
-        Av = op(v)
-        AtAv = op.adjoint(Av)
-        norm_AtAv = torch.norm(AtAv).item()
-        if norm_AtAv == 0.0:
-            break
-        v = AtAv / (norm_AtAv + 1e-12)
+        # very verbose and inefficient for now
+        omega = op(arr_old)
+        alpha = torch.linalg.norm(omega)
+        u = (1.0 / alpha) * omega
+        z = op.adjoint(u)
+        beta = torch.linalg.norm(z)
+        arr = (1.0 / beta) * z
+        error = torch.linalg.norm(op(arr) - beta * u)
+        sigma = beta
+        arr_old = arr
+        i += 1
+        if i >= maxiter:
+            return sigma
 
-    return norm_AtAv
+    return sigma
 
 
 def test_convexity(net, x, device):

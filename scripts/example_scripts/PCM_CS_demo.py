@@ -36,7 +36,8 @@ from LION.classical_algorithms.compressed_sensing import (
     fista_l1,
 )
 from LION.classical_algorithms.spgl1 import spgl1_l1
-from LION.operators import PhotocurrentMapOp, Subsampler, Wavelet2D_DB4
+from LION.operators import PhotocurrentMapOp, Subsampler
+from LION.operators.Wavelet2D import Wavelet2D
 
 
 def run_demo(
@@ -63,20 +64,16 @@ def run_demo(
     im_tensor = im_tensor.to(device)
 
     # Image size
-    H, W = 512, 512
-    image_shape = (H, W)
-    N = H * W
     J = 9  # 512x512 images
-    N = 1 << J
+    H = W = 1 << J
     coarseJ = J - subtract_from_J
     delta = 1.0 / delta_divided_by
 
     # Wavelet transform Psi
-    wavelet = Wavelet2D_DB4(image_shape, wavelet_name="db4", device=device)
-    # wavelet = Wavelet2D_Haar(image_shape, wavelet_name="haar", device=device)
+    wavelet = Wavelet2D((H, W), wavelet_name="db4", device=device)
 
     # Photocurrent mapping operator Phi
-    subsampler = Subsampler(n=N * N, coarseJ=coarseJ, delta=delta)
+    subsampler = Subsampler(n=H * W, coarseJ=coarseJ, delta=delta)
     phi = PhotocurrentMapOp(J=J, subsampler=subsampler, device=device)
 
     # Composite operator A = Phi Psi^{-1}
@@ -133,7 +130,7 @@ def run_demo(
     cs_result_tensor = wavelet.inverse(w_debias)
 
     # Pseudo-inverse reconstruction (zero-filled)
-    im_reconstructed_tensor = phi.pseudo_inv(y)  # warm-up
+    im_reconstructed_tensor = phi.pseudo_inv(y)
 
     # %%
     im_np = im_tensor.squeeze().cpu().numpy()

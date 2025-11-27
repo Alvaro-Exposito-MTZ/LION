@@ -1,14 +1,14 @@
 import torch
-from LION.operators import Wavelet2D_DB4
+from LION.operators import Wavelet2D
 from tests.helper import dotproduct_adjointness_test
 
 
 def test_wavelet_db4_adjointness():
-    J = 9
-    N = 1 << J
-    image_shape = (N, N)
+    J = 4
+    H = W = 1 << J  # 16x16 image
+    image_shape = (H, W)
 
-    operator = Wavelet2D_DB4(image_shape, wavelet_name="db4")
+    operator = Wavelet2D(image_shape, wavelet_name="db4")
 
     x = torch.rand(*image_shape)
 

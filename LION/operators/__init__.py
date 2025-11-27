@@ -1,14 +1,26 @@
 """LION operators."""
 
 from LION.operators.Operator import Operator
-from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
+from LION.operators.PhotocurrentMapOp import (
+    PhotocurrentMapOp,
+    PhotocurrentMapOpNumpy,
+    Subsampler,
+)
 from LION.operators.TomographicProjOp import TomographicProjOp
-from LION.operators.Wavelet2D_DB4 import Wavelet2D_DB4
+from LION.operators.WalshHadamardTransform2D import (
+    WalshHadamardTransform2D,
+    WalshHadamardTransform2DNumpy,
+)
+from LION.operators.Wavelet2D import Wavelet2D, Wavelet2DNumpy
 
 __all__ = [
     "Operator",
     "PhotocurrentMapOp",
+    "PhotocurrentMapOpNumpy",
     "Subsampler",
     "TomographicProjOp",
-    "Wavelet2D_DB4",
+    "WalshHadamardTransform2D",
+    "WalshHadamardTransform2DNumpy",
+    "Wavelet2D",
+    "Wavelet2DNumpy",
 ]

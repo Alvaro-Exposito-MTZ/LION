@@ -13,7 +13,7 @@ from LION.utils.math import power_method_torch
 
 
 class CompositeOp(Operator):
-    """Composite linear operator A = Phi Psi^{-1} and its adjoint.
+    r"""Composite linear operator :math:`A = \Phi \Psi^{-1}` and its adjoint.
 
     Parameters
     ----------
@@ -33,7 +33,7 @@ class CompositeOp(Operator):
     ):
         self.wavelet = wavelet
         self.phi = phi
-        self.device = torch.device(device)
+        self.device = device
 
     def __call__(self, w: torch.Tensor, out=None) -> torch.Tensor:
         """Apply the forward projection.
@@ -119,7 +119,7 @@ def fista_l1(
     verbose: bool = False,
     progress_bar: bool = False,
 ) -> torch.Tensor:
-    """Solve min_w 0.5||A w - y||_2^2 + lam ||w||_1 by FISTA.
+    r"""Solve :math:`\min_w 0.5||A w - y||_2^2 + \lambda ||w||_1` by FISTA.
 
     Parameters
     ----------
@@ -149,7 +149,8 @@ def fista_l1(
     n: int = w0.numel()
 
     if L is None:
-        L = power_method_torch(op, device=device)
+        # Check: Is the squaring needed because the operator is not normalized?
+        L = power_method_torch(op, device=device) ** 2
     step = 1.0 / (L + 1e-12)
 
     w = torch.zeros(n, dtype=torch.float32, device=device)
@@ -279,7 +280,8 @@ def debias_ls(
 
     op_s = DebiasOp(op, y, w, support_tol=support_tol)
 
-    L = power_method_torch(op_s, device=device)
+    # Check: Is the squaring needed because the operator is not normalized?
+    L = power_method_torch(op_s, device=device) ** 2
     step = 1.0 / (L + 1e-12)
 
     v = w[support].clone()
