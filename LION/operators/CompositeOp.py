@@ -34,39 +34,34 @@ class CompositeOp(Operator):
         phi: PhotocurrentMapOp,
         device: str | torch.device | None = None,
     ):
+        """Initialize the CompositeOp A = Phi Psi^{-1}."""
         self.wavelet = wavelet
         self.phi = phi
         self.device = device
 
     def __call__(self, w: torch.Tensor, out=None) -> torch.Tensor:
-        """Apply the forward projection.
+        """Apply the forward projection A = Phi Psi^{-1}.
 
         Parameters
         ----------
         w : torch.Tensor
             Wavelet coefficients, shape (Nw,).
-        out : torch.Tensor | None, optional
-            Optional output holder to store the output measurements.
+        out : None
+            Legacy for tomosipo ``to_autograd``. Just ignore.
 
         Returns
         -------
         torch.Tensor
             Predicted measurements, shape (M,).
         """
-        return self.forward(w, out=out)
+        return self.forward(w)
 
-    def forward(self, w: torch.Tensor, out=None) -> torch.Tensor:
-        """Apply A = Phi Psi^{-1}.
+    def forward(self, w: torch.Tensor) -> torch.Tensor:
+        """Apply the forward projection A = Phi Psi^{-1}.
 
-        Parameters
-        ----------
-        w : torch.Tensor
-            Wavelet coefficients, shape (Nw,).
-
-        Returns
-        -------
-        y : torch.Tensor
-            Predicted measurements, shape (M,).
+        .. note::
+            Prefer calling the instance of the CompositeOp operator as ``operator(w)`` over
+            directly calling this method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
         """
         if not isinstance(w, torch.Tensor):
             raise TypeError(f"Input w must be a torch.Tensor, got {type(w)}")
@@ -78,7 +73,7 @@ class CompositeOp(Operator):
         y = self.phi.forward(x)
         return y
 
-    def adjoint(self, r: torch.Tensor, out=None) -> torch.Tensor:
+    def adjoint(self, r: torch.Tensor) -> torch.Tensor:
         """Apply A^T = Psi Phi^T.
 
         Parameters
@@ -97,11 +92,13 @@ class CompositeOp(Operator):
         return g
 
     @property
-    def domain_shape(self):
+    def domain_shape(self) -> tuple[int, ...]:
+        """Return the shape of the wavelet coefficient domain."""
         # Opposite of range_shape of wavelet since wavelet is Psi^{-1}
         return self.wavelet.range_shape
 
     @property
-    def range_shape(self):
+    def range_shape(self) -> tuple[int, ...]:
+        """Return the shape of the measurement range."""
         # Opposite of domain_shape of wavelet since wavelet is Psi^{-1}
         return self.wavelet.domain_shape

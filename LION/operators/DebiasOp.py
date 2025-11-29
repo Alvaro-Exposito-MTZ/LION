@@ -8,7 +8,7 @@ import torch
 from tqdm import tqdm
 
 from LION.operators.Operator import Operator
-from LION.utils.math import power_method_torch
+from LION.utils.math import power_method
 
 
 class DebiasOp(Operator):
@@ -51,26 +51,57 @@ class DebiasOp(Operator):
         self.device = op.device
 
     def __call__(self, v: torch.Tensor, out=None) -> torch.Tensor:
-        """Apply the forward projection on the support."""
-        return self.forward(v, out=out)
+        """Apply the forward projection on the support.
 
-    def forward(self, v: torch.Tensor, out=None) -> torch.Tensor:
-        """Apply A_s on the support."""
+        Parameters
+        ----------
+        v : torch.Tensor
+            Input vector on the support, shape (Ns,).
+        out : None
+            Legacy for tomosipo ``to_autograd``. Just ignore.
+
+        Returns
+        -------
+        torch.Tensor
+            Output measurements, shape (M,).
+        """
+        return self.forward(v)
+
+    def forward(self, v: torch.Tensor) -> torch.Tensor:
+        """Apply the forward projection on the support.
+
+        .. note::
+            Prefer calling the instance of the DebiasOp operator as ``operator(v)`` over
+            directly calling this method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
+        """
         w_full = torch.zeros_like(self.w)
         w_full[self.support] = v
-        return self.op.forward(w_full, out=out)
+        return self.op.forward(w_full)
 
-    def adjoint(self, r: torch.Tensor, out=None) -> torch.Tensor:
-        """Apply A_s^T on the support."""
-        g_full = self.op.adjoint(r, out=out)
+    def adjoint(self, r: torch.Tensor) -> torch.Tensor:
+        """Apply the adjoint projection on the support.
+
+        Parameters
+        ----------
+        r : torch.Tensor
+            Input measurements, shape (M,).
+
+        Returns
+        -------
+        torch.Tensor
+            Output vector on the support, shape (Ns,).
+        """
+        g_full = self.op.adjoint(r)
         return g_full[self.support]
 
     @property
-    def domain_shape(self):
+    def domain_shape(self) -> tuple[int, ...]:
+        """Return the shape of the support domain."""
         return (self.support.numel(),)
 
     @property
-    def range_shape(self):
+    def range_shape(self) -> tuple[int, ...]:
+        """Return the shape of the measurement range."""
         return self.op.range_shape
 
 
@@ -87,6 +118,8 @@ def debias_ls(
 
     Parameters
     ----------
+    op : Operator
+        Forward operator A.
     y : torch.Tensor
         Measurements, shape (M,).
     w : torch.Tensor
@@ -97,6 +130,8 @@ def debias_ls(
         Maximum number of gradient descent iterations.
     tol : float
         Relative stopping threshold.
+    progress_bar : bool
+        Whether to show a progress bar. Default is False.
 
     Returns
     -------
@@ -112,7 +147,7 @@ def debias_ls(
     op_s = DebiasOp(op, y, w, support_tol=support_tol)
 
     # Check: Why is the squaring needed here?
-    L = power_method_torch(op_s, device=device) ** 2
+    L = power_method(op_s, device=device) ** 2
     step = 1.0 / (L + 1e-12)
 
     v = w[support].clone()

@@ -11,10 +11,10 @@ def test_wht_adjointness():
     y = torch.rand(n)
 
     class WhtOp(Operator):
-        def __call__(self, x, out=None):
+        def __call__(self, x: torch.Tensor) -> torch.Tensor:
             return fwht(x, dim=0)
 
-        def adjoint(self, y, out=None):
+        def adjoint(self, y: torch.Tensor) -> torch.Tensor:
             return fwht(y, dim=0)
 
     operator = WhtOp()

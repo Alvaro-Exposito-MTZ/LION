@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import numpy as np
-import tomosipo as ts
 import torch
 
 
@@ -31,44 +29,38 @@ class Operator:
         """Initialize the Operator."""
         self.device = device
 
-    def __call__(
-        self,
-        x: torch.Tensor | np.ndarray | ts.Data.Data,
-        out: torch.Tensor | np.ndarray | ts.Data.Data | None = None,
-    ) -> torch.Tensor | np.ndarray | ts.Data.Data:
+    def __call__(self, x: torch.Tensor, out=None) -> torch.Tensor:
         """
         Apply the forward operation of the operator.
 
         .. note::
             Usually this is just a wrapper for the ``forward`` method:
-            ``return self.forward(x, out=out)``.
+            ``return self.forward(x)``.
             We want the user to write this explicitly in their subclasses
             so that they can add the docstring in the ``__call__`` method
             instead of the ``forward`` method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
 
         Parameters
         ----------
-        x : torch.Tensor | np.ndarray | ts.Data
+        x : torch.Tensor
             Input to which the operator is applied.
-        out : torch.Tensor | np.ndarray | ts.Data | None, optional
-            Optional output holder to store the result.
+        out : torch.Tensor | None, optional
+            Optional output tensor to store the result.
+            Most subclasses may ignore this parameter, except for tomosipo-based operators
+            which need it for the ``to_autograd`` functionality.
 
         Returns
         -------
-        torch.Tensor | np.ndarray | ts.Data
+        torch.Tensor
             Result of applying the forward operation.
         """
         raise NotImplementedError(
             "__call__ must be implemented by subclasses with docstring. "
             "Usually this is just a wrapper for the forward method: "
-            "return self.forward(x, out=out)"
+            "return self.forward(x)"
         )
 
-    def forward(
-        self,
-        x: torch.Tensor | np.ndarray | ts.Data.Data,
-        out: torch.Tensor | np.ndarray | ts.Data.Data | None = None,
-    ) -> torch.Tensor | np.ndarray | ts.Data.Data:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Apply the forward operation of Operator.
 
@@ -78,33 +70,23 @@ class Operator:
         """
         raise NotImplementedError("Forward method must be implemented by subclasses.")
 
-    def adjoint(
-        self,
-        y: torch.Tensor | np.ndarray | ts.Data.Data,
-        out: torch.Tensor | np.ndarray | ts.Data.Data | None = None,
-    ) -> torch.Tensor | np.ndarray | ts.Data.Data:
+    def adjoint(self, y: torch.Tensor) -> torch.Tensor:
         """
         Apply the adjoint (backward) operation of the operator.
 
         Parameters
         ----------
-        y : torch.Tensor | np.ndarray | ts.Data
+        y : torch.Tensor
             Input to which the adjoint operator is applied.
-        out : torch.Tensor | np.ndarray | ts.Data | None, optional
-            Optional output holder to store the result.
 
         Returns
         -------
-        torch.Tensor | np.ndarray | ts.Data
+        torch.Tensor
             Result of applying the adjoint operation.
         """
         raise NotImplementedError("Adjoint method must be implemented by subclasses.")
 
-    def gram(
-        self,
-        x: torch.Tensor | np.ndarray | ts.Data.Data,
-        out: torch.Tensor | np.ndarray | ts.Data.Data | None = None,
-    ) -> torch.Tensor | np.ndarray | ts.Data.Data:
+    def gram(self, x: torch.Tensor) -> torch.Tensor:
         """Apply the Gram operator.
 
         For a LinearOperator :math:`A`, the self-adjoint Gram operator is defined as :math:`A^H A`.
@@ -112,16 +94,16 @@ class Operator:
         .. note::
            This is the inherited default implementation.
         """
-        return self.adjoint(self.forward(x, out=None), out=out)
+        return self.adjoint(self.forward(x))
 
-    def inverse(self, x: torch.Tensor) -> torch.Tensor:
+    def inverse(self, y: torch.Tensor) -> torch.Tensor:
         """Computes the inverse of the operator applied to input x if exists.
 
         This method should only be implemented by subclasses that have a well-defined inverse.
 
         Parameters
         ----------
-        x : torch.Tensor
+        y : torch.Tensor
             The input data to which the inverse operator is applied.
 
         Returns
@@ -135,7 +117,7 @@ class Operator:
         )
 
     @property
-    def domain_shape(self):
+    def domain_shape(self) -> tuple[int, ...]:
         """
         Get the shape of the image domain.
 
@@ -148,7 +130,7 @@ class Operator:
         )
 
     @property
-    def range_shape(self):
+    def range_shape(self) -> tuple[int, ...]:
         """
         Get the shape of the data (measurement) domain.
 

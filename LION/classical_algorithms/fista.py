@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 
 from LION.operators import Operator
-from LION.utils.math import power_method_torch
+from LION.utils.math import power_method
 
 
 def soft_threshold(v: torch.Tensor, tau: float) -> torch.Tensor:
@@ -104,7 +104,7 @@ def fista_l1(
 
     if L is None:
         # Power method estimates ||A||_2; Lipschitz constant is ||A||_2^2
-        L = power_method_torch(op, device=device).item() ** 2
+        L = power_method(op, device=device).item() ** 2
     step = 1.0 / (L + 1e-12)
 
     w = torch.zeros(n, dtype=torch.float32, device=device)

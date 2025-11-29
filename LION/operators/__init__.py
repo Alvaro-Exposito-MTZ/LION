@@ -3,28 +3,18 @@
 from LION.operators.CompositeOp import CompositeOp
 from LION.operators.DebiasOp import DebiasOp
 from LION.operators.Operator import Operator
-from LION.operators.PhotocurrentMapOp import (
-    PhotocurrentMapOp,
-    PhotocurrentMapOpNumpy,
-    Subsampler,
-)
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
 from LION.operators.TomographicProjOp import TomographicProjOp
-from LION.operators.WalshHadamardTransform2D import (
-    WalshHadamardTransform2D,
-    WalshHadamardTransform2DNumpy,
-)
-from LION.operators.Wavelet2D import Wavelet2D, Wavelet2DNumpy
+from LION.operators.WalshHadamardTransform2D import WalshHadamardTransform2D
+from LION.operators.Wavelet2D import Wavelet2D
 
 __all__ = [
     "CompositeOp",
     "DebiasOp",
     "Operator",
     "PhotocurrentMapOp",
-    "PhotocurrentMapOpNumpy",
     "Subsampler",
     "TomographicProjOp",
     "WalshHadamardTransform2D",
-    "WalshHadamardTransform2DNumpy",
     "Wavelet2D",
-    "Wavelet2DNumpy",
 ]

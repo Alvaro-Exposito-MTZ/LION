@@ -1,3 +1,5 @@
+"""SPGL1 sparse reconstruction with torch operators."""
+
 import numpy as np
 import torch
 from scipy.sparse.linalg import LinearOperator
@@ -6,15 +8,7 @@ from spgl1 import spgl1
 from LION.operators.Operator import Operator
 
 
-def spgl1_torch(
-    op: Operator,
-    y: torch.Tensor,
-    *,  # All arguments below are keyword-only
-    lam: float,
-    iter_lim: int = 200,
-    mode: str = "lasso",
-    **spgl1_kwargs,
-) -> torch.Tensor:
+def spgl1_torch(op: Operator, y: torch.Tensor, **spgl1_kwargs) -> torch.Tensor:
     r"""Solve an l1 sparse reconstruction using SPGL1, wrapping torch operators.
 
     This is a thin wrapper around the Python SPGL1 solver ``spgl1.spgl1`` that
@@ -26,18 +20,6 @@ def spgl1_torch(
     uses the same calling convention (argument names and behaviour); see
     [SPGL1Python]_ for details.
 
-    It solves either
-
-    - Lasso (basis pursuit along the Pareto curve; see [BergFriedlander2008]_):
-      :math:`\\min_w \\tfrac12\\lVert A w - y \\rVert_2^2`
-      subject to :math:`\\lVert w \\rVert_1 \\le \\tau`
-      when ``mode == 'lasso'`` with :math:`\\tau = \\lambda`.
-
-    - Basis pursuit denoise (BPDN; see [BergFriedlander2010]_):
-      :math:`\\min_w \\lVert w \\rVert_1`
-      subject to :math:`\\lVert A w - y \\rVert_2 \\le \\sigma`
-      when ``mode == 'bpdn'`` with :math:`\\sigma = \\lambda`.
-
     Parameters
     ----------
     op : Operator
@@ -45,13 +27,6 @@ def spgl1_torch(
         called as ``op(w)`` and ``op.adjoint(r)``.
     y : torch.Tensor
         Measurements, shape ``(M,)``.
-    lam : float
-        Hyperparameter. Interpreted as:
-        - ``mode == 'lasso'``: ``lam = tau`` is the l1 budget.
-        - ``mode == 'bpdn'``: ``lam = sigma`` is the residual bound.
-    mode : {'lasso', 'bpdn'}
-        Which SPGL1 formulation to use; see [BergFriedlander2008]_ and
-        [BergFriedlander2010]_ for the underlying optimisation problems.
     spgl1_kwargs : dict
         Extra keyword args forwarded to ``spgl1.spgl1`` (for example
         tolerances or iteration limits; see [SPGL1Python]_).
@@ -82,15 +57,6 @@ def spgl1_torch(
     n_w = w0.numel()
     n_y = y.numel()
 
-    if mode == "lasso":
-        tau = float(lam)
-        sigma = 0.0
-    elif mode == "bpdn":
-        tau = 0.0
-        sigma = float(lam)
-    else:
-        raise ValueError(f"Unknown mode '{mode}', expected 'lasso' or 'bpdn'.")
-
     def matvec(w_np: np.ndarray) -> np.ndarray:
         w_t = torch.from_numpy(w_np.astype(np.float32)).to(device).view_as(w0)
         y_t = op(w_t)
@@ -111,15 +77,7 @@ def spgl1_torch(
     y_np = y.detach().cpu().numpy().ravel()
     x0_np = np.zeros(n_w, dtype=np.float32)
 
-    x_np, _, _, _ = spgl1(
-        A_linop,
-        y_np,
-        tau=tau,
-        sigma=sigma,
-        x0=x0_np,
-        iter_lim=iter_lim,
-        **spgl1_kwargs,
-    )
+    x_np, _, _, _ = spgl1(A_linop, y_np, x0=x0_np, **spgl1_kwargs)
 
     w_hat = torch.from_numpy(x_np.astype(np.float32)).to(device).view_as(w0)
     return w_hat

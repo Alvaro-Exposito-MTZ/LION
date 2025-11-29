@@ -38,7 +38,7 @@ from LION.operators.DebiasOp import debias_ls
 
 def run_demo(
     dataset: torch.utils.data.Dataset,
-    algo: Literal["fista", "spgl1"] = "fista",  # "fista" or "spgl1"
+    algo: Literal["fista", "spgl1"] = "spgl1",
     subtract_from_J: int = 1,
     delta_divided_by: int = 4,
     lam: float = 1e-3,
@@ -102,9 +102,7 @@ def run_demo(
         w_hat = spgl1_torch(
             op=A_op,
             y=y,
-            lam=lam,  # l1 budget
             iter_lim=max_iter,
-            mode="lasso",  # or "bpdn" if lam should be a noise bound
             verbosity=verbosity,
             opt_tol=tol,
         )

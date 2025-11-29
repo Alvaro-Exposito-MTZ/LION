@@ -66,7 +66,14 @@ class PhotocurrentMapOp(Operator):
         Device where tensors are placed.
     """
 
-    def __init__(self, J: int, subsampler: Subsampler, wht_dim: int = -1, device=None):
+    def __init__(
+        self,
+        J: int,
+        subsampler: Subsampler,
+        wht_dim: int = -1,
+        device: torch.device | str | None = None,
+    ):
+        """Initialize the PhotocurrentMapOp."""
         super().__init__(device=device)
         self.N = 1 << J
         self.num_pixels = self.N * self.N
@@ -83,31 +90,48 @@ class PhotocurrentMapOp(Operator):
             device=self.device,
         )
 
-    def __call__(
-        self, x: torch.Tensor, out: torch.Tensor | None = None
-    ) -> torch.Tensor:
+    def __call__(self, x: torch.Tensor, out=None) -> torch.Tensor:
         """Apply the forward photocurrent mapping.
 
         Parameters
         ----------
         x : torch.Tensor
             The input image to which the photocurrent mapping is applied.
-        out : torch.Tensor | None, optional
-            Optional output holder to store the output measurements.
+        out : None
+            Legacy for tomosipo ``to_autograd``. Just ignore.
 
         Returns
         -------
         torch.Tensor
             The measurements obtained from the photocurrent mapping.
         """
-        return self.forward(x, out=out)
+        return self.forward(x)
 
-    def forward(self, x: torch.Tensor, out=None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply the forward photocurrent mapping.
+
+        .. note::
+            Prefer calling the instance of the PhotocurrentMapOp operator as ``operator(x)`` over
+            directly calling this method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`
+        """
         # Forward Hadamard
-        y_standard_order = fwht(x.ravel(), order=False, dim=self.wht_dim)
-        return y_standard_order[self.meas_indices_standard]
+        return fwht(x.ravel(), order=False, dim=self.wht_dim)[
+            self.meas_indices_standard
+        ]
 
-    def adjoint(self, y: torch.Tensor, out=None) -> torch.Tensor:
+    def adjoint(self, y: torch.Tensor) -> torch.Tensor:
+        """Apply the adjoint photocurrent mapping.
+
+        Parameters
+        ----------
+        y : torch.Tensor
+            The input measurements to which the adjoint photocurrent mapping is applied.
+
+        Returns
+        -------
+        torch.Tensor
+            The reconstructed image from the adjoint photocurrent mapping.
+        """
         # Inject measurements into full standard-order Hadamard vector
         y_standard_full = y.new_zeros(self.num_pixels)
         y_standard_full.index_copy_(0, self.meas_indices_standard, y)
@@ -116,7 +140,19 @@ class PhotocurrentMapOp(Operator):
             *self._image_shape
         )
 
-    def pseudo_inv(self, y: torch.Tensor, out=None) -> torch.Tensor:
+    def pseudo_inv(self, y: torch.Tensor) -> torch.Tensor:
+        """Apply the pseudo-inverse photocurrent mapping.
+
+        Parameters
+        ----------
+        y : torch.Tensor
+            The input measurements to which the pseudo-inverse photocurrent mapping is applied.
+
+        Returns
+        -------
+        torch.Tensor
+            The reconstructed image from the pseudo-inverse photocurrent mapping.
+        """
         # Inject measurements into full standard-order Hadamard vector
         y_standard_full = y.new_zeros(self.num_pixels)
         y_standard_full.index_copy_(0, self.meas_indices_standard, y)
@@ -126,84 +162,11 @@ class PhotocurrentMapOp(Operator):
         )
 
     @property
-    def domain_shape(self):
+    def domain_shape(self) -> tuple[int, ...]:
+        """Return the shape of the image domain."""
         return self._image_shape
 
     @property
-    def range_shape(self):
-        return self._data_shape
-
-
-class PhotocurrentMapOpNumpy(Operator):
-    """Photocurrent mapping operator using subsampled WHT and dyadic permutation for NumPy arrays.
-
-    ::note::
-        We prefer using the PyTorch version :class:`PhotocurrentMapOp` unless there is a specific reason
-        to use NumPy.
-
-    Parameters
-    ----------
-    J : int
-        The exponent such that the image size is (2^J, 2^J).
-    subsampler : Subsampler
-        The subsampler defining the measurement indices.
-    wht_dim : int, optional
-        The dimension along which to apply the WHT. Default is -1 (last dimension).
-    """
-
-    def __init__(self, J: int, subsampler: Subsampler, wht_dim: int = -1):
-        self.N = 1 << J
-        self.num_pixels = self.N * self.N
-        self.wht_dim = wht_dim
-
-        # TODO: Add batch size
-        self._image_shape = (self.N, self.N)
-        self._data_shape = (subsampler.subsampled_indices.shape[0],)
-
-        self.meas_indices_standard = normal_to_dyadic_permutation(J=J)[
-            subsampler.subsampled_indices
-        ]
-
-    def __call__(self, x: np.ndarray, out: np.ndarray | None = None) -> np.ndarray:
-        """Apply the forward photocurrent mapping.
-
-        Parameters
-        ----------
-        x : np.ndarray
-            The input image to which the photocurrent mapping is applied.
-        out : np.ndarray | None, optional
-            Optional output holder to store the output measurements.
-
-        Returns
-        -------
-        np.ndarray
-            The measurements obtained from the photocurrent mapping.
-        """
-        return self.forward(x, out=out)
-
-    def forward(self, x: np.ndarray, out=None) -> np.ndarray:
-        # Forward Hadamard
-        x_torch = torch.tensor(x)
-        y_standard_order = fwht(x_torch.ravel(), order=False, dim=self.wht_dim)
-        return y_standard_order[self.meas_indices_standard].numpy()
-
-    def adjoint(self, y: np.ndarray, out=None) -> np.ndarray:
-        # Inject measurements into full standard-order Hadamard vector
-        y_torch = torch.tensor(y)
-        y_standard_full = y_torch.new_zeros(self.num_pixels)
-        meas_indices_standard = torch.Tensor(self.meas_indices_standard).long()
-        y_standard_full.index_copy_(0, meas_indices_standard, y_torch)
-        # The adjoint of WHT is WHT itself
-        return (
-            fwht(y_standard_full, order=False, dim=self.wht_dim)
-            .view(*self._image_shape)
-            .numpy()
-        )
-
-    @property
-    def domain_shape(self):
-        return self._image_shape
-
-    @property
-    def range_shape(self):
+    def range_shape(self) -> tuple[int, ...]:
+        """Return the shape of the measurement range."""
         return self._data_shape
