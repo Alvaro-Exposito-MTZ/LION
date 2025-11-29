@@ -5,7 +5,7 @@ from LION.operators.DebiasOp import DebiasOp
 from LION.operators.Operator import Operator
 from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
 from LION.operators.TomographicProjOp import TomographicProjOp
-from LION.operators.WalshHadamardTransform2D import WalshHadamardTransform2D
+from LION.operators.WalshHadamard2D import WalshHadamard2D
 from LION.operators.Wavelet2D import Wavelet2D
 
 __all__ = [
@@ -15,6 +15,6 @@ __all__ = [
     "PhotocurrentMapOp",
     "Subsampler",
     "TomographicProjOp",
-    "WalshHadamardTransform2D",
+    "WalshHadamard2D",
     "Wavelet2D",
 ]

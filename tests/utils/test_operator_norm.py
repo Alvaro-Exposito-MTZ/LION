@@ -7,7 +7,7 @@ from LION.operators import (
     Operator,
     PhotocurrentMapOp,
     Subsampler,
-    WalshHadamardTransform2D,
+    WalshHadamard2D,
     Wavelet2D,
 )
 from LION.utils.math import power_method
@@ -104,7 +104,7 @@ def test_wht_operator_norm_torch():
 
     J = 4
     N = 1 << J  # 16x16 image
-    wht_op = WalshHadamardTransform2D(height=N, width=N)
+    wht_op = WalshHadamard2D(height=N, width=N)
 
     wht_op_norm = power_method(wht_op)
     rng = torch.Generator().manual_seed(0)

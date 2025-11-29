@@ -1,12 +1,14 @@
-# LION: AI tools for learned tomographic reconstruction
+# LION: AI tools for learned tomographic and other image reconstruction tasks
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-12-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
+[![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](#black-code-style-)
 
-University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction, LION (Learned Iterative Optimization Networks)
+University of Cambridge Computational Image Analysis (CIA) groups AI tools for image reconstruction (e.g. tomographic reconstruction), LION (Learned Iterative Optimization Networks)
 
-The library is a place to gather and provide resources for Computed Tomography reconstruction using machine learning tools. It contains data dowloading and pre-processing, torch `DataSet` classes for the existing data, and `Experiments` class with implementation of default realistic experiments, several data-driven methods and models, and features to enhance reproduciblity.
+The library is a place to gather and provide resources for image reconstruction, such as Computed Tomography reconstruction, using machine learning tools implemented in PyTorch.
+It contains data dowloading and pre-processing, torch `DataSet` classes for the existing data, and `Experiments` class with implementation of default realistic experiments, several data-driven methods and models, and features to enhance reproduciblity.
 
 **WARNING** Building in progress. This is a tool in development in very early stages.
 Many things are bound to fail and many more are bound to change. If you want to help with development, send an email to Ander Biguri and/or open and issue or a discussion.
@@ -37,7 +39,7 @@ pre-commit install --hook-type pre-commit --hook-type post-merge
 
 ## Datasets
 
-Currently there are several DataSets supported by LION. LION automatically knows where these are, but currently it only works for people working on the servers of CMS at University of Cambridge. To make it work in somewhere else, you just want to change LION/utils/paths.py line 7 `LION_DATA_PATH = pathlib.Path("/store/LION/datasets/")` to the actual location in your system. We are working on figuring out how to make LION flexible at install.
+Currently there are several DataSets supported by LION. LION automatically knows where these are, but currently it only works for people working on the servers of CMS at University of Cambridge. To make it work in somewhere else, you just want to change [LION/utils/paths.py](LION/utils/paths.py) line 7 `LION_DATA_PATH = pathlib.Path("/store/LION/datasets/")` to the actual location in your system. We are working on figuring out how to make LION flexible at install.
 
 NOTE: If you are part of CIA at DAMTP, you already have access to these datasets and you don't need to follow any instruction to dowload them.
 
@@ -60,9 +62,15 @@ Folders for each of these exist in `LION/models`. An extra folder for standard `
 
 [Read more about which papers are implemented in LION here](papers_in_LION.md)
 
+## Operators
+
+Originally designed for tomographic reconstruction tasks, specifically Computed Tomography (CT),
+LION has been extended to work with more operators.
+[Read more about operators here](LION/operators/_README.md)
+
 ## Developers
 
-Read `developers.md`
+Read [`developers.md`](developers.md)
 
 ## Contributors
 

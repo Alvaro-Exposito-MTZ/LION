@@ -8,7 +8,7 @@ from spyrit.core.torch import fwht
 from LION.operators.Operator import Operator
 
 
-class WalshHadamardTransform2D(Operator):
+class WalshHadamard2D(Operator):
     """Walsh-Hadamard Transform operator.
 
     Parameters
@@ -65,7 +65,7 @@ class WalshHadamardTransform2D(Operator):
         """Apply the Walsh-Hadamard Transform.
 
         .. note::
-            Prefer calling the instance of the WalshHadamardTransform2D operator as ``operator(x)`` over
+            Prefer calling the instance of the WalshHadamard2D operator as ``operator(x)`` over
             directly calling this method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
         """
         if len(x.shape) != 2 or x.shape != (self.height, self.width):
