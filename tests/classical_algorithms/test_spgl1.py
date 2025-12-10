@@ -1,7 +1,7 @@
 """Tests for SPGL1."""
 
 import torch
-from LION.classical_algorithms.spgl1 import spgl1_torch
+from LION.classical_algorithms.spgl1_torch import spgl1_torch
 from LION.operators import CompositeOp, PhotocurrentMapOp, Subsampler, Wavelet2D
 
 

@@ -51,7 +51,7 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
 
 from LION.classical_algorithms import fista_l1
-from LION.classical_algorithms.spgl1 import spgl1_torch
+from LION.classical_algorithms.spgl1_torch import spgl1_torch
 from LION.operators import CompositeOp, Wavelet2D
 from LION.operators.DebiasOp import debias_ls
 
