@@ -10,11 +10,12 @@ from __future__ import annotations
 
 # math/science imports
 import numpy as np
-import torch
 import tomosipo as ts
+import torch
 
 # AItomotools imports
 from LION.CTtools.ct_geometry import Geometry
+from LION.operators import CTProjectionOp
 
 
 def from_HU_to_normal(img):
@@ -22,7 +23,6 @@ def from_HU_to_normal(img):
     Converts image in Hounsfield Units (air-> -1000, bone->500) into a [0-1] image.
     Comercial scanners use a piecewise linear function. Check STIR for real values. (https://raw.githubusercontent.com/UCL/STIR/85cc1940c297b1749cf44a9fba937d7cefdccd47/src/utilities/share/ct_slopes.json)
     """
-
     if isinstance(img, np.ndarray):
         return np.minimum(np.maximum((img.astype(np.float32) + 1000) / 3000, 0), 1)
     elif isinstance(img, torch.Tensor):
@@ -37,7 +37,6 @@ def from_HU_to_mu(img):
     bone->1.52 g/cm^3). Approximate.
     Comercial scanners use a piecewise linear function. Check STIR for real values. (https://raw.githubusercontent.com/UCL/STIR/85cc1940c297b1749cf44a9fba937d7cefdccd47/src/utilities/share/ct_slopes.json)
     """
-
     if isinstance(img, np.ndarray):
         return np.maximum(
             ((1.52 - 0.0012) / (500 + 1000)) * (img.astype(np.float32) + 1000) + 0.0012,
@@ -154,7 +153,7 @@ def from_HU_to_material_id(img):
     return materials
 
 
-def make_operator(geometry: Geometry):
+def make_operator(geometry: Geometry) -> CTProjectionOp:
     if not isinstance(geometry, Geometry):
         raise ValueError(
             "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"
@@ -182,6 +181,7 @@ def make_operator(geometry: Geometry):
     else:
         raise ValueError("Geometry mode not understood, has to be 'fan' or 'parallel'")
     A = ts.operator(vg, pg)
+    A = CTProjectionOp(A)
     return A
 
 
@@ -195,7 +195,6 @@ def forward_projection(
     distances from source to detector DSD and distance from source to object DSO.
     May support other backends than tomosipo
     """
-
     if backend != "tomosipo":
         raise ValueError("Only tomosipo backend for CT supported")
     # You can add other backends here
@@ -209,7 +208,7 @@ def forward_projection(
         if image.shape[0] > 1:  # there is no reason to have this constraint
             raise ValueError("Image must be 2D")
     elif len(image.shape) == 2:
-        image = torch.unsqueeze(image, axis=0)
+        image = torch.unsqueeze(image, 0)
     else:
         raise ValueError("Image must be 2D")
 

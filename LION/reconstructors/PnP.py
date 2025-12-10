@@ -1,17 +1,51 @@
-import torch
+"""Plug-and-Play (PnP) Reconstructor using a prior function."""
+
+from __future__ import annotations
+
+from typing import Callable, Literal
+
 import numpy as np
+import torch
 from tqdm import tqdm
 
-from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
 from LION.classical_algorithms.fdk import fdk
+from LION.CTtools.ct_geometry import Geometry
+from LION.operators import Operator
+from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
 
 
 class PnP(LIONReconstructor):
-    def __init__(self, geometry, model, algorithm):
-        super().__init__(geometry)
-        self.model = model
+    def __init__(
+        self,
+        physics: Geometry | Operator,
+        prior_fn: Callable[[torch.Tensor], torch.Tensor],
+        algorithm: Literal["ADMM", "HQS", "FBS"] = "ADMM",
+    ):
+        """
+        Plug-and-Play Reconstructor using a denoiser as prior.
+
+        Parameters
+        ----------
+        physics : Geometry or Operator
+            The physics of the imaging system.
+            This can be either a CT Geometry object or a pre-defined Operator.
+            If a Geometry is provided, the corresponding CT operator will be created.
+        prior_fn : Callable[[torch.Tensor], torch.Tensor]
+            The prior for plug-and-play, for example, a pre-trained denoiser model.
+        algorithm : Literal["ADMM", "HQS", "FBS"], optional
+            The reconstruction algorithm to use. See the options in the notes below. Default is "ADMM".
+
+        Notes
+        -----
+        The following algorithms are implemented:
+        - "ADMM": Alternating Direction Method of Multipliers
+        - "HQS": Half Quadratic Splitting
+        - "FBS": Forward-Backward Splitting
+        """
+        super().__init__(physics)
+        self.model = prior_fn
 
         if algorithm == "HQS":
             # Half Quadratic Splitting, as from the paper "Plug-and-Play Image Restoration with Deep Denoiser Prior"
@@ -40,9 +74,7 @@ class PnP(LIONReconstructor):
             raise TypeError("Sinogram must be a torch.Tensor")
         if sino.dim() != 3:
             raise ValueError(
-                "Sinogram must be a 3D tensor (batch_size, num_angles, num_detectors), but got {}".format(
-                    sino.dim()
-                )
+                f"Sinogram must be a 3D tensor (batch_size, num_angles, num_detectors), but got {sino.dim()}"
             )
         # Apply the reconstruction algorithm
         if self.algorithm == "HQS":
@@ -119,7 +151,6 @@ class PnP(LIONReconstructor):
         """
         Forward-Backward Splitting algorithm implementation.
         """
-
         if step_size is None:
             op_norm = power_method(self.op)
             step_size = 1.0 / (op_norm**2)
@@ -162,9 +193,9 @@ class PnP(LIONReconstructor):
         u = torch.zeros(self.op.domain_shape, device=measurement.device)
 
         def matmul_closure(x: torch.Tensor) -> torch.Tensor:
-            return self.op.T(self.op(x)) + eta * x
+            return self.op.adjoint(self.op(x)) + eta * x
 
-        AT_y = self.op.T(measurement)
+        AT_y = self.op.adjoint(measurement)
         iterator = range(max_iter)
         if prog_bar:
             iterator = tqdm(iterator, desc="ADMM iterations")

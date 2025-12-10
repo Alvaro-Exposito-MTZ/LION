@@ -5,24 +5,19 @@
 #
 # This exploits the idea that a simple Gaussian denoiser can be extrapolated to other applications, such as CT reconstruction.
 
-# %%
-# %load_ext autoreload
-# %autoreload 2
 
 # %% [markdown]
 # ## Import libraries
 
+
 # %% Imports
-# Standard imports
+from pathlib import Path
+
+import deepinv
 import matplotlib.pyplot as plt
+import torch
 from skimage.metrics import structural_similarity
 from tqdm import tqdm
-
-# Pytorch imports
-import torch
-
-# DeepInv imports (for the pretrained denoiser)
-import deepinv
 
 # LION imports
 from LION.classical_algorithms import fdk
@@ -70,6 +65,7 @@ denoiser = deepinv.models.DRUNet(pretrained="download", device=device)
 # %% [markdown]
 # ## Helper metric function
 
+
 # %%
 def ssim_torch(target: torch.Tensor, input: torch.Tensor) -> float:
     """Adapt SSIM function for torch tensors."""
@@ -84,6 +80,7 @@ def ssim_torch(target: torch.Tensor, input: torch.Tensor) -> float:
 # Note that in this example,
 # we use a different noise level estimation for the plug-and-play reconstruction.
 # For the plug-and-play reconstruction, we use a much smaller value compared to the estimated value from the one sample.
+
 
 # %%
 def denoiser_fn(ct_image: torch.Tensor, sigma: float = None) -> torch.Tensor:
@@ -101,7 +98,7 @@ def denoiser_fn_admm(ct_image: torch.Tensor) -> torch.Tensor:
     return denoiser_fn(ct_image, sigma=0.06)
 
 
-reconstructor = PnP(experiment.geometry, model=denoiser_fn_admm, algorithm="ADMM")
+reconstructor = PnP(experiment.geometry, prior_fn=denoiser_fn_admm, algorithm="ADMM")
 
 # %% [markdown]
 # ## Perform Plug-and-Play reconstruction
@@ -143,16 +140,14 @@ for i, (sino, target) in tqdm(
     plt.imshow(recon[0, 0].cpu(), cmap="gray")
     plt.clim(0, 2)
     plt.axis("off")
-    plt.title(
-        "FDK" + "\nSSIM = {:.2f}".format(ssim_torch(target[0], recon[0])), fontsize=6
-    )
+    plt.title("FDK" + f"\nSSIM = {ssim_torch(target[0], recon[0]):.2f}", fontsize=6)
 
     plt.subplot(1, n_subplots, 2)
     plt.imshow(denoised[0, 0].cpu(), cmap="gray")
     plt.clim(0, 2)
     plt.axis("off")
     plt.title(
-        "Denoised" + "\nSSIM = {:.2f}".format(ssim_torch(target[0], denoised[0])),
+        "Denoised" + f"\nSSIM = {ssim_torch(target[0], denoised[0]):.2f}",
         fontsize=6,
     )
 
@@ -160,7 +155,7 @@ for i, (sino, target) in tqdm(
     plt.imshow(pnp_admm_result[0, 0].cpu(), cmap="gray")
     plt.title(
         f"PnP ADMM (step_size={admm_step_size}, iters={admm_iterations})"
-        + "\nSSIM = {:.2f}".format(ssim_torch(target[0], pnp_admm_result[0])),
+        + f"\nSSIM = {ssim_torch(target[0], pnp_admm_result[0]):.2f}",
         fontsize=6,
     )
     plt.clim(0, 2)
@@ -172,8 +167,12 @@ for i, (sino, target) in tqdm(
     plt.axis("off")
     plt.clim(0, 2)
 
+    filepath = Path(
+        f"test_{i}-admm_stepsize{admm_step_size:.0e}_iters{admm_iterations}.png"
+    )
+    print(f"\nSaving figure to {filepath}\n")
     plt.savefig(
-        f"test_{i}-admm_stepsize{admm_step_size:.0e}_iters{admm_iterations}.png",
+        filepath,
         bbox_inches="tight",
         dpi=300,
     )
