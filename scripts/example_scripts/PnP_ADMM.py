@@ -9,6 +9,7 @@
 # %% [markdown]
 # ## Import libraries
 
+
 # %% Imports
 from pathlib import Path
 
@@ -169,13 +170,12 @@ for i, (sino, target) in tqdm(
     filepath = Path(
         f"test_{i}-admm_stepsize{admm_step_size:.0e}_iters{admm_iterations}.png"
     )
-    print(f"Saving figure to {filepath}")
+    print(f"\nSaving figure to {filepath}\n")
     plt.savefig(
         filepath,
         bbox_inches="tight",
         dpi=300,
     )
-    plt.show()
 
 # %% [markdown]
 # As mentioned previously, we use a smaller noise estimation parameter for the plug-and-play algorithm (compared to the estimated value). This was seen to improve the reconstruction quality. A much higher value would oversmooth the image.
