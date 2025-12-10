@@ -8,7 +8,7 @@ import torch
 from LION.operators.Operator import Operator
 
 
-class TomographicProjOp(Operator):
+class CTProjectionOp(Operator):
     """Tomographic projection operator and its adjoint using tomosipo.
 
     Parameters
@@ -26,7 +26,7 @@ class TomographicProjOp(Operator):
         ts_operator: ts.Operator.Operator,
         device: torch.device | str | None = None,
     ):
-        """Initialize the TomographicProjOp."""
+        """Initialize the CTProjectionOp."""
         super().__init__(device=device)
         self._ts = ts_operator
 
@@ -50,10 +50,10 @@ class TomographicProjOp(Operator):
         return self._ts._fp(x, out=out)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Apply the forward of TomographicProjOp.
+        """Apply the forward of CTProjectionOp.
 
         .. note::
-            Prefer calling the instance of the TomographicProjOp operator as ``operator(x)`` over
+            Prefer calling the instance of the CTProjectionOp operator as ``operator(x)`` over
             directly calling this method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
         """
         return self._ts._fp(x)

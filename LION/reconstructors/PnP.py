@@ -1,4 +1,4 @@
-"""Plug-and-Play (PnP) Reconstructor using a denoiser as prior."""
+"""Plug-and-Play (PnP) Reconstructor using a prior function."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ class PnP(LIONReconstructor):
     def __init__(
         self,
         physics: Geometry | Operator,
-        denoiser: Callable[[torch.Tensor], torch.Tensor],
+        prior_fn: Callable[[torch.Tensor], torch.Tensor],
         algorithm: Literal["ADMM", "HQS", "FBS"] = "ADMM",
     ):
         """
@@ -32,9 +32,8 @@ class PnP(LIONReconstructor):
             The physics of the imaging system.
             This can be either a CT Geometry object or a pre-defined Operator.
             If a Geometry is provided, the corresponding CT operator will be created.
-        denoiser : Callable[[torch.Tensor], torch.Tensor]
-            A denoising function that takes a torch.Tensor and returns a denoised torch.Tensor.
-            This is most likely a pre-trained model.
+        prior_fn : Callable[[torch.Tensor], torch.Tensor]
+            The prior for plug-and-play, for example, a pre-trained denoiser model.
         algorithm : Literal["ADMM", "HQS", "FBS"], optional
             The reconstruction algorithm to use. See the options in the notes below. Default is "ADMM".
 
@@ -46,7 +45,7 @@ class PnP(LIONReconstructor):
         - "FBS": Forward-Backward Splitting
         """
         super().__init__(physics)
-        self.model = denoiser
+        self.model = prior_fn
 
         if algorithm == "HQS":
             # Half Quadratic Splitting, as from the paper "Plug-and-Play Image Restoration with Deep Denoiser Prior"

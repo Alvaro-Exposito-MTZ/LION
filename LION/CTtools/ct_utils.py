@@ -15,7 +15,7 @@ import torch
 
 # AItomotools imports
 from LION.CTtools.ct_geometry import Geometry
-from LION.operators import TomographicProjOp
+from LION.operators import CTProjectionOp
 
 
 def from_HU_to_normal(img):
@@ -153,7 +153,7 @@ def from_HU_to_material_id(img):
     return materials
 
 
-def make_operator(geometry: Geometry) -> TomographicProjOp:
+def make_operator(geometry: Geometry) -> CTProjectionOp:
     if not isinstance(geometry, Geometry):
         raise ValueError(
             "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"
@@ -181,7 +181,7 @@ def make_operator(geometry: Geometry) -> TomographicProjOp:
     else:
         raise ValueError("Geometry mode not understood, has to be 'fan' or 'parallel'")
     A = ts.operator(vg, pg)
-    A = TomographicProjOp(A)
+    A = CTProjectionOp(A)
     return A
 
 

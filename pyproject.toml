@@ -62,9 +62,13 @@ dependencies = [
     "torchvision",
     "tqdm",
     "wandb",
+    "LION[codestyle]",
 ]
 
 [project.optional-dependencies]
+codestyle = [
+    "jaxtyping",
+]
 tests = [
     "coverage",
     "codecov",
