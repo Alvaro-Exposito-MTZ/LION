@@ -47,8 +47,7 @@ import deepinv
 import matplotlib.pyplot as plt
 import numpy as np
 from jaxtyping import Float
-from skimage.metrics import peak_signal_noise_ratio as psnr
-from skimage.metrics import structural_similarity as ssim
+from torchmetrics import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
 from LION.classical_algorithms import fista_l1
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
@@ -90,6 +89,7 @@ current_datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 log_dir = Path("pcm_demo_output") / current_datetime_str
 log_dir.mkdir(parents=True, exist_ok=True)
 
+
 # %% [markdown]
 # ## Experiment
 
@@ -104,10 +104,30 @@ log_dir.mkdir(parents=True, exist_ok=True)
 # - Reports PSNR and SSIM for both reconstructions, displays and saves the images.
 
 
+# %% mystnb={"code_prompt_show": "Show plotting details"} tags=["hide-cell"]
+def show_images(
+    images: list[torch.Tensor],
+    fig_filepath: Path,
+    titles: list[str] | None = None,
+    suptitle: str | None = None,
+) -> None:
+    """Plot images."""
+    n_images = len(images)
+    _, axes = plt.subplots(1, n_images, squeeze=False, figsize=(n_images * 4, 4))
+    for i in range(n_images):
+        axes[0][i].imshow(images[i].detach().cpu().squeeze(), cmap="gray")
+        axes[0][i].axis("off")
+        if titles:
+            axes[0][i].set_title(titles[i])
+    if suptitle:
+        plt.suptitle(suptitle, x=0.4, y=-0.05, fontsize=16)
+    plt.savefig(fig_filepath, dpi=150)
+
+
 # %%
 def run_pcm_demo(
     recon_method_name: str,
-    recon_fn: Callable,
+    recon_fn: Callable[[PhotocurrentMapOp, Measurement1D], GrayscaleImage2D],
     ground_truth_image: GrayscaleImage2D,
     image_name: str,
     J: int,  # image size will be 2^J x 2^J
@@ -131,59 +151,42 @@ def run_pcm_demo(
     pcm_op = PhotocurrentMapOp(J=J, subsampler=subsampler, device=device)
 
     y_subsampled_tensor = pcm_op(im_tensor)
-    zero_filled_recon_tensor = pcm_op.pseudo_inv(y_subsampled_tensor)
-
-    im_np = im_tensor.squeeze().cpu().numpy()
-    zero_filled_recon_np = zero_filled_recon_tensor.squeeze().cpu().numpy()
-
-    recon_tensor = recon_fn(
-        pcm_op=pcm_op,
-        pcm_measurement=y_subsampled_tensor,
-    )
-    recon_np = recon_tensor.squeeze().cpu().numpy()
-
-    data_range = im_np.max() - im_np.min()
-
-    psnr_zf = psnr(im_np, zero_filled_recon_np, data_range=data_range)
-    psnr_pnp = psnr(im_np, recon_np, data_range=data_range)
-
-    ssim_zf = ssim(im_np, zero_filled_recon_np, data_range=data_range)
-    ssim_pnp = ssim(im_np, recon_np, data_range=data_range)
-
-    n_subplots = 4
-    plt.figure(figsize=(n_subplots * 4, 4))
-
-    plt.subplot(1, n_subplots, 1)
-    plt.imshow(im_np, cmap="gray")
-    plt.title("Original Image")
-    plt.axis("off")
-
-    plt.subplot(1, n_subplots, 2)
-    plt.imshow(zero_filled_recon_np, cmap="gray")
-    plt.title(
-        f"Zero-filled Reconstruction\nPSNR: {psnr_zf:.2f} dB, SSIM: {ssim_zf:.4f}"
-    )
-    plt.axis("off")
-
-    plt.subplot(1, n_subplots, 3)
-    plt.imshow(recon_np, cmap="gray")
-    plt.title(
-        f"{recon_method_name} Reconstruction\nPSNR: {psnr_pnp:.2f} dB, SSIM: {ssim_pnp:.4f}"
-    )
-    plt.axis("off")
-
-    plt.suptitle(
-        "PCM Reconstructions Comparison\n"
-        + f"sampling rate: {sampling_percentage:.2f}%, in-order measurements: {in_order_measurements_percentage:.2f}%",
-        x=0.4,
-        y=-0.05,
-        fontsize=16,
+    zero_filled_recon_tensor = (
+        pcm_op.pseudo_inv(y_subsampled_tensor).unsqueeze(0).unsqueeze(0)
     )
 
-    plt.savefig(
-        Path(log_dir)
+    recon_tensor = (
+        recon_fn(
+            pcm_op=pcm_op,
+            pcm_measurement=y_subsampled_tensor,
+        )
+        .unsqueeze(0)
+        .unsqueeze(0)
+    )
+
+    data_range = (im_tensor.max() - im_tensor.min()).item()
+    psnr = PeakSignalNoiseRatio(data_range=data_range).to(device)
+    ssim = StructuralSimilarityIndexMeasure(data_range=data_range).to(device)
+
+    psnr_zero_filled = psnr(zero_filled_recon_tensor, im_tensor)
+    psnr_recon = psnr(recon_tensor, im_tensor)
+
+    ssim_zero_filled = ssim(zero_filled_recon_tensor, im_tensor)
+    ssim_recon = ssim(recon_tensor, im_tensor)
+
+    show_images(
+        [im_tensor, zero_filled_recon_tensor, recon_tensor],
+        fig_filepath=Path(log_dir)
         / f"{image_name}_{recon_method_name}_sampling_percentage={sampling_percentage:.2f}_in_order_measurements={in_order_measurements_percentage:.2f}.png",
-        dpi=150,
+        titles=[
+            "Original Image",
+            f"Zero-filled Reconstruction\nPSNR: {psnr_zero_filled:.2f} dB, SSIM: {ssim_zero_filled:.4f}",
+            f"{recon_method_name} Reconstruction\nPSNR: {psnr_recon:.2f} dB, SSIM: {ssim_recon:.4f}",
+        ],
+        suptitle=(
+            "PCM Reconstructions Comparison\n"
+            + f"sampling rate: {sampling_percentage:.2f}%, in-order measurements: {in_order_measurements_percentage:.2f}%"
+        ),
     )
 
 
@@ -251,8 +254,7 @@ def denoiser_fn(x: GrayscaleImage2D) -> GrayscaleImage2D:
 
 
 def run_pnp_admm(
-    pcm_op: PhotocurrentMapOp,
-    pcm_measurement: Measurement1D,
+    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D
 ) -> GrayscaleImage2D:
     admm_iterations = 100
     admm_step_size = 1e5
@@ -324,8 +326,7 @@ run_pcm_demo(
 
 # %%
 def run_fista_l1(
-    pcm_op: PhotocurrentMapOp,
-    pcm_measurement: Measurement1D,
+    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D
 ) -> GrayscaleImage2D:
 
     lam = 10  # Good for Daubechies 4 wavelet transform
@@ -401,8 +402,7 @@ run_pcm_demo(
 
 # %%
 def run_spgl1(
-    pcm_op: PhotocurrentMapOp,
-    pcm_measurement: Measurement1D,
+    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D
 ) -> GrayscaleImage2D:
 
     lam: float = 1e-3
