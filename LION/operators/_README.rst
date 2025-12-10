@@ -15,7 +15,7 @@ Users can define their own operators by creating a class that subclasses
 `LION.utils.operators.Operator <Operator.py>`_ and implements the necessary methods.
 We also include some operators such as:
 
-- `TomographicProjOp <TomographicProjOp.py>`_:
+- `CTProjectionOp <CTProjectionOp.py>`_:
   Discrete tomographic projection operator for CT reconstruction tasks.
   It wraps a `tomosipo <https://github.com/ahendriksen/tomosipo>`_ Operator and
   uses its PyTorch backend for efficient GPU-accelerated projection and backprojection.
