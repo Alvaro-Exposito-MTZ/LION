@@ -288,7 +288,7 @@ run_pcm_demo(
 
 
 # %% [markdown]
-# The cell above runs the PnP-ADMM reconstruction and compares it to the
+# The code above runs the PnP-ADMM reconstruction and compares it to the
 # zero-filled pseudo-inverse.
 #
 # Although PnP-ADMM substantially improves PSNR and SSIM, it can smooth out
