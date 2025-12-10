@@ -10,11 +10,11 @@ from LION.operators.Wavelet2D import Wavelet2D
 
 __all__ = [
     "CompositeOp",
+    "CTProjectionOp",
     "DebiasOp",
     "Operator",
     "PhotocurrentMapOp",
     "Subsampler",
-    "CTProjectionOp",
     "WalshHadamard2D",
     "Wavelet2D",
 ]
