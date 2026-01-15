@@ -82,18 +82,16 @@ solver.clean_checkpoints()
 savefolder = pathlib.Path("/home/ea692/LION/LION/trained_models/Sparse2Inverse/Test/SparseAngleLowDoseCTRecon/SparseVSNoise/30sin2000ep/64Angles_Haarpsi_and_SSIM")
 savefolder.mkdir(parents=True, exist_ok=True)
 
-#Load the trained model of Sparse2Inverse
-model_Sparse, _, _ = UNet().load("/store/LION/ea692/LION/LION/trained_models/Sparse2Inverse/Train/SparseAngleLowDoseCTRecon/S2I.json")
-model_Sparse.eval()
-çsolver_params = Sparse2InverseSolver.default_parameters()
+model.eval()
+solver_params = Sparse2InverseSolver.default_parameters()
 solver_params.sino_split_count = 4
 solver_params.recon_fn = fdk
-optimizer = Adam(model_Sparse.parameters())
+optimizer = Adam(model.parameters())
 #Not used directly, the solver defines its own loss.
 loss_fn = nn.MSELoss()
 
 solver_sparse = Sparse2InverseSolver(
-    model_Sparse,
+    model,
     optimizer,
     loss_fn,
     solver_params=solver_params,
