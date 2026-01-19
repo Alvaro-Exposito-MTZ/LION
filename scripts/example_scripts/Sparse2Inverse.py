@@ -107,66 +107,15 @@ def normalize_01(x,y):
     x[x<0]=0
     return x
 
-#HAARPsi metric
-haarpsi = HAARPsi(C=5.0, a=4.9)
-haarpsi.eval()
-
-haarpsi_values_sparse = []
-
 #SSIM metric
 def my_ssim(x, y):
-    x = x.cpu().numpy().squeeze()
-    y = y.cpu().numpy().squeeze()
-    return ssim(x, y, data_range=x.max() - x.min())
-
-ssim_values_sparse = []
-
-# Fixed visualization window for all images to ensure fair visual comparison.
-vmin, vmax = 0, 5
-
-for idx, (sino, target) in enumerate(dataloader):
-    sino = sino.to(device)
-    with torch.no_grad():
-        model_reco_sparse = solver_sparse.reconstruct(sino).detach().cpu()
-        target_cpu = target.cpu()
-
-        target_n = normalize_01(target_cpu,target_cpu)
-        sparse_n = normalize_01(model_reco_sparse,target_cpu)
-
-        haarspi_sparse,_,_ = haarpsi(target_n, sparse_n)
-        ssim_sparse=my_ssim(target_n,sparse_n)
+    x = x.detach().squeeze().cpu()
+    y = y.detach().squeeze().cpu()
     
-    ssim_values_sparse.append(ssim_sparse)
-
-    haarpsi_values_sparse.append(haarspi_sparse.item())
-
-    #Figure the comparison between target and reconstruction. 
-    #Raw reconstructions are shown without normalization.
-    if idx == 0:
-        plt.figure(figsize=(12,4))
-        
-        plt.subplot(1,2,1)
-        plt.title("Target (clean)")
-        im0 = plt.imshow(target[0,0].cpu(), cmap="gray")
-        plt.axis("off")
-        im0.set_clim(vmin, vmax)
-        
-        plt.subplot(1,2,2)
-        plt.title(f"Model raw reconstruction Sparse\nhaarpsi={haarspi_sparse.item():.3f}\nssim={ssim_sparse:.3f}")
-        im2 = plt.imshow(model_reco_sparse[0,0], cmap="gray")
-        plt.axis("off")
-        im2.set_clim(vmin, vmax)
-        
-        plt.tight_layout()
-        plt.savefig(savefolder / "Reconstruction_Sparse2Inverse_SparseAngleLowDoseCTRecon_Haarspi_SSIM.png", dpi=150)
-        plt.close()
-
-haarpsi_mean_sparse = np.mean(haarpsi_values_sparse)
-haarpsi_std_sparse = np.std(haarpsi_values_sparse)
-
-ssim_mean_sparse = np.mean(ssim_values_sparse)
-ssim_std_sparse = np.std(ssim_values_sparse)
-
-#Plot the metrics obtained throw all the sinograms tested
-print(f"haarpsi mean Sparse SparseAngleLowDoseCTRecon 30sin2000ep 64 angles: {haarpsi_mean_sparse:.4f}, haarpsi std Sparse: {haarpsi_std_sparse:.4f}")
-print(f"ssim mean Sparse SparseAngleLowDoseCTRecon 30sin2000ep 64 angles: {ssim_mean_sparse:.4f}, ssim std Sparse: {ssim_std_sparse:.4f}")
+    target_n = normalize_01(y,y)
+    sparse_n = normalize_01(x,y)
+    return ssim(target_n, sparse_n, data_range=1)
+    
+model.eval()
+solver.set_testing(dataloader, my_ssim)
+solver.test()
