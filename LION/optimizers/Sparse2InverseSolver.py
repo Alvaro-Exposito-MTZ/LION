@@ -38,7 +38,6 @@ class Sparse2InverseSolver(LIONsolver):
 
         self.model.geometry = self.geometry  
         self.model._make_operator()
-        self.A_full = self.model.A
         self.sino_split_count = self.solver_params.sino_split_count
         self.recon_fn = self.solver_params.recon_fn
         self.split_combinations = self.two_two_strategy(self.sino_split_count)
